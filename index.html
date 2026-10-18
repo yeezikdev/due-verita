@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Due Verità e una Bugia</title>
+<meta name="description" content="Gioco multiplayer: scrivi due verità e una bugia, gli altri devono scoprirla.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤥</text></svg>">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{--bg:#0f0c1d;--card:#1b1630;--card2:#251e42;--line:#3a3160;--txt:#f3efff;--mut:#a59cc8;--acc:#ff4f8b;--acc2:#7c5cff;--ok:#2ed47a;--bad:#ff5d5d;--gold:#ffc94d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{min-height:100vh;background:radial-gradient(1100px 600px at 50% -220px,#2c2058 0%,var(--bg) 62%) fixed}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 70px}
+h1{font-size:30px;margin:10px 0 4px;text-align:center;line-height:1.15}
+h2{font-size:21px;margin:0 0 10px}
+.sub{color:var(--mut);text-align:center;margin:0 0 18px}
+.mut{color:var(--mut);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0}
+label.f{display:block;font-size:13px;color:var(--mut);margin:0 0 6px}
+input[type=text]{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:16px;outline:none}
+input[type=text]:focus{border-color:var(--acc2)}
+.btn{display:block;width:100%;padding:15px;border:0;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;margin-top:12px;font-family:inherit}
+.btn.sec{background:var(--card2);border:1px solid var(--line);font-weight:600}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:active:not(:disabled){transform:scale(.98)}
+.or{text-align:center;color:var(--mut);margin:16px 0;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;color:var(--mut)}
+.top b{color:var(--gold);letter-spacing:2px}
+.pill{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--txt);font-size:13px;cursor:pointer;font-family:inherit}
+.code{font-size:46px;letter-spacing:12px;font-weight:800;text-align:center;font-family:ui-monospace,Menlo,monospace;color:var(--gold);margin:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{background:var(--card2);border:1px solid var(--line);padding:7px 12px;border-radius:999px;font-size:14px}
+.chip.ok{border-color:var(--ok)}
+.chip.off{opacity:.4}
+.st{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.st .n{width:26px;text-align:center;font-weight:800;color:var(--mut)}
+.st input[type=text]{flex:1}
+.lie{flex:0 0 auto;width:52px;height:50px;border-radius:12px;border:1px solid var(--line);background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;filter:grayscale(1);opacity:.6}
+.lie input{position:absolute;opacity:0;pointer-events:none}
+.lie:has(input:checked){filter:none;opacity:1;background:rgba(255,79,139,.2);border-color:var(--acc)}
+.opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:16px;border-radius:14px;border:2px solid var(--line);background:var(--card2);color:var(--txt);font-size:17px;margin:10px 0;cursor:pointer;font-family:inherit;line-height:1.35}
+.opt .n{font-weight:800;color:var(--mut);min-width:18px}
+.opt.sel{border-color:var(--acc);background:rgba(255,79,139,.14)}
+.opt:disabled{cursor:default}
+.opt.truth{border-color:var(--ok);background:rgba(46,212,122,.10)}
+.opt.lieR{border-color:var(--bad);background:rgba(255,93,93,.16)}
+.tag{font-size:12px;font-weight:800;letter-spacing:1px;margin-bottom:4px}
+.truth .tag{color:var(--ok)} .lieR .tag{color:var(--bad)}
+.who{font-size:13px;color:var(--mut);margin-top:6px}
+.big{font-size:20px;font-weight:700;text-align:center;margin:6px 0}
+.center{text-align:center}
+.lb{width:100%;border-collapse:collapse}
+.lb td{padding:10px 6px;border-bottom:1px solid var(--line);font-size:15px}
+.lb td.r{text-align:right;font-weight:800;color:var(--gold)}
+.lb .s{font-size:12px;color:var(--mut)}
+.award{display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.award:last-child{border-bottom:0}
+.award .e{font-size:34px}
+.award .t{font-weight:700;font-size:17px}
+.bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .4s}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120px);background:#000c;border:1px solid var(--line);padding:12px 18px;border-radius:12px;transition:transform .3s;z-index:9;max-width:90vw;text-align:center}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.spin{width:38px;height:38px;border:4px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:s 1s linear infinite;margin:20px auto}
+@keyframes s{to{transform:rotate(360deg)}}
+ol.rules{margin:6px 0 0;padding-left:20px;color:var(--mut);line-height:1.6;font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="toast"></div>
+<script>
+const PREFIX = 'duevb-yz-2026-';
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const joinNames = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1] : a[0];
+function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch(e){ return null; } }
+function ss(k, v){ try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch(e){ return null; } }
+
+let myPid = ss('dvb_pid');
+if (!myPid) { myPid = 'p' + Math.random().toString(36).slice(2, 10); ss('dvb_pid', myPid); }
+let myName = ls('dvb_name') || '';
+let peer = null, isHost = false, hostConn = null, conns = {}, G = null, S = null;
+let screen = 'home', roomCode = '', retries = 0, myVotes = {};
+const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase().slice(0, 4);
+
+function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2600); }
+function roomUrl(){ return location.origin + location.pathname + '?room=' + roomCode; }
+function setUrl(){ try { history.replaceState(null, '', '?room=' + roomCode); } catch(e){} }
+async function share(){
+  const url = roomUrl();
+  if (navigator.share) { try { await navigator.share({ title: 'Due Verità e una Bugia', text: 'Entra nella mia stanza: ' + roomCode, url }); return; } catch(e){} }
+  try { await navigator.clipboard.writeText(url); toast('Link copiato!'); } catch(e){ prompt('Copia il link:', url); }
+}
+function readName(){
+  const v = ($('#nameIn')?.value || '').trim().slice(0, 20);
+  if (!v) { toast('Scrivi il tuo nome'); $('#nameIn')?.focus(); return false; }
+  myName = v; ls('dvb_name', v); return true;
+}
+function genCode(){ const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let c = ''; for (let i = 0; i < 4; i++) c += L[Math.floor(Math.random() * L.length)]; return c; }
+
+/* ====================== HOST ====================== */
+function newGame(){ return { code: roomCode, phase: 'lobby', players: [], statements: {}, order: [], cur: 0, votes: {}, stats: {}, cycle: 0, last: null }; }
+function ensureStats(id){ G.stats[id] = G.stats[id] || { score: 0, fooled: 0, caught: 0, wrong: 0, busted: 0 }; }
+function addPlayer(pid, name){
+  let p = G.players.find(x => x.id === pid);
+  if (p) { p.online = true; return p; }
+  let n = String(name || '').trim().slice(0, 20) || 'Giocatore', base = n, i = 2;
+  while (G.players.some(x => x.name.toLowerCase() === n.toLowerCase())) n = base + ' ' + i++;
+  p = { id: pid, name: n, online: true };
+  G.players.push(p); ensureStats(pid); return p;
+}
+const online = () => G.players.filter(p => p.online);
+const subject = () => G.order[G.cur];
+const voters = () => online().filter(p => p.id !== subject());
+
+function startWriting(){ G.phase = 'write'; G.statements = {}; G.votes = {}; G.cycle++; G.last = null; G.order = []; G.cur = 0; }
+function startVoting(){ G.order = shuffle(Object.keys(G.statements)); G.cur = 0; G.votes = {}; G.phase = 'vote'; }
+function reveal(){
+  if (G.phase !== 'vote') return;
+  const sid = subject(), st = G.statements[sid];
+  ensureStats(sid);
+  let fooled = 0, caught = 0;
+  for (const [vid, idx] of Object.entries(G.votes)) {
+    ensureStats(vid);
+    if (idx === st.lie) { G.stats[vid].caught++; G.stats[vid].score += 100; G.stats[sid].busted++; caught++; }
+    else { G.stats[vid].wrong++; fooled++; }
+  }
+  G.stats[sid].fooled += fooled; G.stats[sid].score += fooled * 50;
+  G.last = { fooled, caught };
+  G.phase = 'reveal';
+}
+function next(){ G.cur++; G.votes = {}; G.phase = G.cur < G.order.length ? 'vote' : 'cycleEnd'; }
+function checkProgress(){
+  if (G.phase === 'write') { const on = online(); if (on.length && Object.keys(G.statements).length && on.every(p => G.statements[p.id])) startVoting(); }
+  if (G.phase === 'vote') { const v = voters(); if (v.length && v.every(p => G.votes[p.id] !== undefined)) reveal(); }
+}
+function hostHandle(m){
+  const pid = m.pid, p = G.players.find(x => x.id === pid), isMe = pid === myPid;
+  switch (m.type) {
+    case 'submit': {
+      if (G.phase !== 'write' || !p || !Array.isArray(m.list)) return;
+      const list = m.list.map(s => String(s || '').trim().slice(0, 140)), lie = +m.lie;
+      if (list.length !== 3 || list.some(s => !s) || !(lie >= 0 && lie < 3)) return;
+      const idx = shuffle([0, 1, 2]);
+      G.statements[pid] = { list: idx.map(i => list[i]), lie: idx.indexOf(lie) };
+      break;
+    }
+    case 'vote':
+      if (G.phase !== 'vote' || !p || pid === subject() || G.votes[pid] !== undefined) return;
+      if (!(m.idx >= 0 && m.idx < 3)) return;
+      G.votes[pid] = +m.idx; break;
+    case 'start': if (!isMe) return; if (G.players.length < 2) { toast('Servono almeno 2 giocatori'); return; } startWriting(); break;
+    case 'forceVote': if (!isMe || G.phase !== 'write' || !Object.keys(G.statements).length) return; startVoting(); break;
+    case 'forceReveal': if (!isMe) return; reveal(); break;
+    case 'next': if (!isMe || G.phase !== 'reveal') return; next(); break;
+    case 'again': if (!isMe) return; startWriting(); break;
+    case 'end': if (!isMe) return; G.phase = 'end'; break;
+    case 'reset': if (!isMe) return;
+      G.players = G.players.filter(x => x.online); G.stats = {}; G.players.forEach(x => ensureStats(x.id));
+      G.phase = 'lobby'; G.cycle = 0; G.statements = {}; G.order = []; G.votes = {}; break;
+    default: return;
+  }
+  checkProgress(); sync();
+}
+function pub(){
+  const inRound = G.phase === 'vote' || G.phase === 'reveal';
+  const sid = inRound ? subject() : null, st = sid ? G.statements[sid] : null;
+  return {
+    code: G.code, phase: G.phase, cycle: G.cycle, hostId: myPid,
+    players: G.players.map(p => ({ id: p.id, name: p.name, online: p.online, submitted: !!G.statements[p.id], voted: G.votes[p.id] !== undefined, ...G.stats[p.id] })),
+    cur: G.cur, total: G.order.length, subject: sid, list: st ? st.list : null,
+    lie: G.phase === 'reveal' ? st.lie : null, votes: G.phase === 'reveal' ? G.votes : null, last: G.last
+  };
+}
+function sync(){
+  S = pub(); render();
+  const msg = { type: 'state', state: S };
+  for (const c of Object.values(conns)) { try { if (c.open) c.send(msg); } catch(e){} }
+}
+function createRoom(){
+  if (!readName()) return;
+  isHost = true; roomCode = genCode(); screen = 'connecting'; render();
+  if (peer) try { peer.destroy(); } catch(e){}
+  peer = new Peer(PREFIX + roomCode, { debug: 0 });
+  peer.on('open', () => { if (G) return; G = newGame(); addPlayer(myPid, myName); setUrl(); sync(); });
+  peer.on('connection', conn => {
+    conn.on('data', d => {
+      if (!d || !d.pid) return;
+      if (d.type === 'join') {
+        if (conns[d.pid] && conns[d.pid] !== conn) try { conns[d.pid].close(); } catch(e){}
+        conns[d.pid] = conn; conn._pid = d.pid;
+        addPlayer(d.pid, d.name); checkProgress(); sync(); return;
+      }
+      if (conn._pid !== d.pid) return;
+      hostHandle(d);
+    });
+    conn.on('close', () => {
+      const pid = conn._pid;
+      if (!pid || conns[pid] !== conn) return;
+      delete conns[pid];
+      if (G.phase === 'lobby') { G.players = G.players.filter(x => x.id !== pid); delete G.stats[pid]; }
+      else { const p = G.players.find(x => x.id === pid); if (p) p.online = false; }
+      checkProgress(); sync();
+    });
+  });
+  peer.on('disconnected', () => { try { peer.reconnect(); } catch(e){} });
+  peer.on('error', e => {
+    if (e.type === 'unavailable-id' && !G) { createRoom(); return; }
+    toast('Errore di rete: ' + e.type);
+  });
+}
+
+/* ====================== CLIENT ====================== */
+function joinRoom(){
+  if (!readName()) return;
+  const c = ($('#codeIn')?.value || '').trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(c)) { toast('Il codice è di 4 lettere'); return; }
+  roomCode = c; isHost = false; retries = 0; screen = 'connecting'; S = null; render();
+  if (peer) try { peer.destroy(); } catch(e){}
+  peer = new Peer({ debug: 0 });
+  peer.on('open', () => { if (!hostConn || !hostConn.open) openConn(); });
+  peer.on('disconnected', () => { try { peer.reconnect(); } catch(e){} });
+  peer.on('error', e => {
+    if (e.type === 'peer-unavailable') {
+      if (S) retry(); else { screen = 'home'; render(); toast('Stanza non trovata. Controlla il codice.'); }
+    } else toast('Errore di rete: ' + e.type);
+  });
+}
+function openConn(){
+  const c = peer.connect(PREFIX + roomCode, { reliable: true });
+  hostConn = c;
+  c.on('open', () => { retries = 0; c.send({ type: 'join', pid: myPid, name: myName }); setUrl(); });
+  c.on('data', d => { if (d && d.type === 'state') { S = d.state; screen = 'game'; render(); } });
+  c.on('close', () => { if (hostConn === c && S) retry(); });
+}
+function retry(){
+  if (retries++ >= 6) { screen = 'lost'; S = null; render(); return; }
+  toast('Connessione persa, riprovo…');
+  setTimeout(() => { if (peer && !peer.destroyed) openConn(); }, 2500);
+}
+function send(m){
+  m.pid = myPid;
+  if (isHost) hostHandle(m);
+  else if (hostConn && hostConn.open) hostConn.send(m);
+  else toast('Non sei connesso');
+}
+
+/* ====================== ACTIONS ====================== */
+function submitStatements(){
+  const list = [0, 1, 2].map(i => ($('#s' + i)?.value || '').trim());
+  const lieEl = document.querySelector('input[name=lie]:checked');
+  if (list.some(s => !s)) { toast('Scrivi tutte e 3 le frasi'); return; }
+  if (!lieEl) { toast('Segna quale frase è la bugia 🤥'); return; }
+  send({ type: 'submit', list, lie: +lieEl.value });
+}
+function vote(i){
+  const key = S.cycle + '-' + S.cur;
+  if (myVotes[key] !== undefined) return;
+  myVotes[key] = i; send({ type: 'vote', idx: i }); render();
+}
+
+/* ====================== VIEWS ====================== */
+const me = () => S && S.players.find(p => p.id === myPid);
+const amHost = () => S && S.hostId === myPid;
+const nameOf = id => (S.players.find(p => p.id === id) || {}).name || '?';
+const plural = (n, a, b) => n === 1 ? a : b;
+
+function homeView(){
+  return `
+  <h1>🤥 Due Verità<br>e una Bugia</h1>
+  <p class="sub">Scrivi 3 frasi su di te. Una è falsa. Gli altri devono scoprirla.</p>
+  <div class="card">
+    <label class="f" for="nameIn">Il tuo nome</label>
+    <input type="text" id="nameIn" data-keep maxlength="20" placeholder="Es. Marco" value="${esc(myName)}" autocomplete="nickname">
+    ${urlRoom ? '' : `<button class="btn" onclick="createRoom()">✨ Crea una stanza</button><div class="or">— oppure entra in una stanza —</div>`}
+    <label class="f" for="codeIn" ${urlRoom ? 'style="margin-top:14px"' : ''}>Codice stanza</label>
+    <input type="text" id="codeIn" data-keep maxlength="4" placeholder="ABCD" value="${esc(urlRoom)}" style="text-transform:uppercase;letter-spacing:6px;font-weight:700" autocomplete="off">
+    <button class="btn ${urlRoom ? '' : 'sec'}" onclick="joinRoom()">🚪 Entra</button>
+    ${urlRoom ? `<div class="or">— oppure —</div><button class="btn sec" onclick="createRoom()">✨ Crea una nuova stanza</button>` : ''}
+  </div>
+  <div class="card">
+    <h2>Come si gioca</h2>
+    <ol class="rules">
+      <li>Ognuno scrive 2 verità e 1 bugia su di sé.</li>
+      <li>A turno si mostrano le frasi di un giocatore: gli altri votano la bugia.</li>
+      <li><b>+100</b> a chi scopre la bugia, <b>+50</b> al bugiardo per ogni persona ingannata.</li>
+      <li>Alla fine: premi per miglior bugiardo, detective e altro.</li>
+    </ol>
+  </div>`;
+}
+function topBar(){
+  return `<div class="top"><span>Stanza <b>${esc(S.code)}</b> · ${S.players.filter(p => p.online).length} online</span><button class="pill" onclick="share()">🔗 Invita</button></div>`;
+}
+function chips(fn){
+  return `<div class="chips">${S.players.map(p => { const r = fn(p); return `<span class="chip ${r.cls || ''} ${p.online ? '' : 'off'}">${r.icon || ''} ${esc(p.name)}${p.id === S.hostId ? ' 👑' : ''}${p.id === myPid ? ' (tu)' : ''}</span>`; }).join('')}</div>`;
+}
+function lobbyView(){
+  const n = S.players.length;
+  return `${topBar()}
+  <div class="card center">
+    <div class="mut">Codice stanza</div>
+    <div class="code">${esc(S.code)}</div>
+    <div class="mut">Gli amici aprono il link o inseriscono questo codice</div>
+    <button class="btn sec" onclick="share()">🔗 Condividi link</button>
+  </div>
+  <div class="card">
+    <h2>Giocatori (${n})</h2>
+    ${chips(() => ({ cls: 'ok' }))}
+    ${amHost()
+      ? `<button class="btn" ${n < 2 ? 'disabled' : ''} onclick="send({type:'start'})">▶️ Inizia la partita</button>${n < 3 ? '<p class="mut center">Consigliati almeno 3 giocatori</p>' : ''}`
+      : `<div class="spin"></div><p class="mut center">In attesa che l'host avvii la partita…</p>`}
+  </div>`;
+}
+function writeView(){
+  const m = me(), done = S.players.filter(p => p.submitted).length, on = S.players.filter(p => p.online).length;
+  const ph = ['Es. Ho nuotato con uno squalo', 'Es. So suonare il pianoforte', 'Es. Sono stato in Giappone'];
+  return `${topBar()}
+  ${m && m.submitted
+    ? `<div class="card center"><div style="font-size:44px">✅</div><div class="big">Frasi inviate!</div><p class="mut">Aspettiamo gli altri…</p></div>`
+    : `<div class="card">
+        <h2>Giro ${S.cycle}: scrivi le tue frasi</h2>
+        <p class="mut" style="margin-top:0">Due vere e una falsa. Tocca 🤥 accanto alla bugia. L'ordine verrà mescolato.</p>
+        ${[0, 1, 2].map(i => `<div class="st"><span class="n">${i + 1}</span><input type="text" id="s${i}" data-keep maxlength="140" placeholder="${ph[i]}"><label class="lie" title="Questa è la bugia"><input type="radio" name="lie" id="lie${i}" value="${i}" data-keep>🤥</label></div>`).join('')}
+        <button class="btn" onclick="submitStatements()">📨 Invia</button>
+      </div>`}
+  <div class="card">
+    <h2>Pronti ${done}/${on}</h2>
+    <div class="bar"><i style="width:${on ? done / on * 100 : 0}%"></i></div>
+    ${chips(p => ({ cls: p.submitted ? 'ok' : '', icon: p.submitted ? '✅' : '✍️' }))}
+    ${amHost() && done > 0 && done < on ? `<button class="btn sec" onclick="send({type:'forceVote'})">⏩ Inizia senza aspettare</button>` : ''}
+  </div>`;
+}
+function voteView(){
+  const subj = S.subject === myPid, key = S.cycle + '-' + S.cur, my = myVotes[key];
+  const m = me(), voted = (m && m.voted) || my !== undefined;
+  const elig = S.players.filter(p => p.online && p.id !== S.subject), nv = elig.filter(p => p.voted).length;
+  return `${topBar()}
+  <div class="card">
+    <div class="mut">Turno ${S.cur + 1} di ${S.total}</div>
+    <h2>${subj ? 'Tocca a te! 😏' : `Qual è la bugia di <span style="color:var(--acc)">${esc(nameOf(S.subject))}</span>?`}</h2>
+    ${subj ? '<p class="mut" style="margin-top:0">Gli altri stanno votando le tue frasi. Mantieni la faccia seria…</p>' : ''}
+    ${S.list.map((t, i) => `<button class="opt ${my === i ? 'sel' : ''}" ${subj || voted ? 'disabled' : ''} onclick="vote(${i})"><span class="n">${i + 1}</span><span>${esc(t)}</span></button>`).join('')}
+    ${!subj && voted ? '<p class="center mut">Voto inviato ✓</p>' : ''}
+  </div>
+  <div class="card">
+    <h2>Hanno votato ${nv}/${elig.length}</h2>
+    <div class="bar"><i style="width:${elig.length ? nv / elig.length * 100 : 0}%"></i></div>
+    ${chips(p => p.id === S.subject ? { icon: '🎭' } : { cls: p.voted ? 'ok' : '', icon: p.voted ? '🗳️' : '🤔' })}
+    ${amHost() ? `<button class="btn sec" onclick="send({type:'forceReveal'})">👀 Rivela ora</button>` : ''}
+  </div>`;
+}
+function revealView(){
+  const subj = nameOf(S.subject), votes = S.votes || {}, mv = votes[myPid], last = S.last || { fooled: 0, caught: 0 };
+  let mine = '';
+  if (S.subject === myPid) mine = last.fooled ? `Hai ingannato ${last.fooled} ${plural(last.fooled, 'persona', 'persone')}: +${last.fooled * 50} 😈` : 'Ti hanno scoperto tutti 😅';
+  else if (mv === undefined) mine = 'Non hai votato in questo turno';
+  else mine = mv === S.lie ? 'Hai scoperto la bugia! +100 🕵️' : 'Ci sei cascato! 🙈';
+  const isLast = S.cur + 1 >= S.total;
+  const sorted = S.players.slice().sort((a, b) => b.score - a.score).slice(0, 5);
+  return `${topBar()}
+  <div class="card">
+    <div class="mut">Turno ${S.cur + 1} di ${S.total}</div>
+    <h2>La bugia di ${esc(subj)} era…</h2>
+    ${S.list.map((t, i) => {
+      const who = Object.entries(votes).filter(([, v]) => v === i).map(([id]) => esc(nameOf(id)));
+      return `<div class="opt ${i === S.lie ? 'lieR' : 'truth'}"><span class="n">${i + 1}</span><div><div class="tag">${i === S.lie ? '🤥 BUGIA' : '✅ VERA'}</div>${esc(t)}${who.length ? `<div class="who">Votata da: ${who.join(', ')}</div>` : ''}</div></div>`;
+    }).join('')}
+    <div class="big">${esc(mine)}</div>
+    <p class="center mut">${last.fooled ? `🤥 ${esc(subj)} ha ingannato ${last.fooled} ${plural(last.fooled, 'persona', 'persone')}` : `Nessuno è cascato nella bugia di ${esc(subj)}`}${last.caught ? ` · 🕵️ ${last.caught} ${plural(last.caught, "l'ha scoperta", "l'hanno scoperta")}` : ''}</p>
+  </div>
+  <div class="card"><h2>Classifica</h2>${board(sorted)}</div>
+  ${amHost() ? `<button class="btn" onclick="send({type:'next'})">${isLast ? '🏁 Fine giro' : '▶️ Prossimo giocatore'}</button>` : `<p class="center mut">In attesa dell'host…</p>`}`;
+}
+function board(list){
+  list = list || S.players.slice().sort((a, b) => b.score - a.score);
+  const medal = ['🥇', '🥈', '🥉'];
+  return `<table class="lb">${list.map((p, i) => `<tr><td style="width:34px">${medal[i] || (i + 1) + '.'}</td><td>${esc(p.name)}${p.id === myPid ? ' (tu)' : ''}<div class="s">🤥 ingannati ${p.fooled} · 🕵️ scoperte ${p.caught}</div></td><td class="r">${p.score}</td></tr>`).join('')}</table>`;
+}
+function cycleEndView(){
+  return `${topBar()}
+  <div class="card center"><div style="font-size:44px">🎉</div><div class="big">Giro ${S.cycle} completato!</div><p class="mut">Volete giocare un altro giro con nuove frasi?</p></div>
+  <div class="card"><h2>Classifica</h2>${board()}</div>
+  ${amHost() ? `<button class="btn" onclick="send({type:'again'})">🔁 Altro giro</button><button class="btn sec" onclick="send({type:'end'})">🏆 Fine partita e premi</button>` : `<p class="center mut">L'host sceglie se fare un altro giro…</p>`}`;
+}
+function awards(){
+  const ps = S.players, out = [];
+  const best = k => { const m = Math.max(0, ...ps.map(p => p[k] || 0)); return m > 0 ? { m, n: ps.filter(p => p[k] === m).map(p => esc(p.name)) } : null; };
+  let b;
+  if (b = best('score')) out.push(['👑', `${joinNames(b.n)} ${b.n.length > 1 ? 'vincono' : 'vince'} la partita`, `${b.m} punti`]);
+  if (b = best('fooled')) out.push(['🏆', `${joinNames(b.n)} ${b.n.length > 1 ? 'sono i migliori bugiardi' : 'è il miglior bugiardo'}`, `${b.m} ${plural(b.m, 'persona ingannata', 'persone ingannate')}`]);
+  if (b = best('caught')) out.push(['🕵️', `${joinNames(b.n)} ${b.n.length > 1 ? 'hanno' : 'ha'} scoperto ${b.m} ${plural(b.m, 'bugia', 'bugie')}`, b.n.length > 1 ? 'Detective a pari merito' : 'Il detective del gruppo']);
+  if (b = best('wrong')) out.push(['🙈', `${joinNames(b.n)} ${b.n.length > 1 ? 'sono i più creduloni' : 'è il più credulone'}`, `ci ${b.n.length > 1 ? 'sono cascati' : 'è cascato'} ${b.m} ${plural(b.m, 'volta', 'volte')}`]);
+  if (b = best('busted')) out.push(['📖', `${joinNames(b.n)} ${b.n.length > 1 ? 'sono libri aperti' : 'è un libro aperto'}`, `bugia scoperta ${b.m} ${plural(b.m, 'volta', 'volte')}`]);
+  return out.map(([e, t, s]) => `<div class="award"><div class="e">${e}</div><div><div class="t">${t}</div><div class="mut">${s}</div></div></div>`).join('') || '<p class="mut">Nessuna statistica.</p>';
+}
+function endView(){
+  return `<h1>🏆 Premiazione</h1>
+  <p class="sub">${S.cycle} ${plural(S.cycle, 'giro giocato', 'giri giocati')}</p>
+  <div class="card">${awards()}</div>
+  <div class="card"><h2>Classifica finale</h2>${board()}</div>
+  ${amHost() ? `<button class="btn" onclick="send({type:'reset'})">🔄 Nuova partita</button>` : `<p class="center mut">Grazie per aver giocato!</p>`}`;
+}
+function view(){
+  if (screen === 'connecting' && !S) return `<h1>🤥</h1><div class="spin"></div><p class="sub">Connessione in corso…</p>`;
+  if (screen === 'lost') return `<h1>😵 Connessione persa</h1><p class="sub">L'host non è raggiungibile. Forse ha chiuso la pagina.</p>
+    <button class="btn" onclick="screen='home';render()">Torna all'inizio</button>`;
+  if (!S) return homeView();
+  return ({ lobby: lobbyView, write: writeView, vote: voteView, reveal: revealView, cycleEnd: cycleEndView, end: endView }[S.phase] || homeView)();
+}
+function render(){
+  const keep = {};
+  app.querySelectorAll('[data-keep]').forEach(el => keep[el.id] = el.type === 'radio' ? el.checked : el.value);
+  const foc = document.activeElement && document.activeElement.id;
+  app.innerHTML = view();
+  for (const id in keep) { const el = document.getElementById(id); if (!el) continue; if (el.type === 'radio') el.checked = keep[id]; else el.value = keep[id]; }
+  if (foc) { const el = document.getElementById(foc); if (el && el.type === 'text') { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} } }
+}
+window.addEventListener('beforeunload', e => { if (isHost && G && G.players.length > 1) { e.preventDefault(); e.returnValue = ''; } });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && !S && e.target.id === 'codeIn') joinRoom(); });
+if (typeof Peer === 'undefined') app.innerHTML = '<h1>⚠️</h1><p class="sub">Impossibile caricare la libreria di rete. Controlla la connessione e ricarica.</p>';
+else render();
+</script>
+</body>
+</html>
